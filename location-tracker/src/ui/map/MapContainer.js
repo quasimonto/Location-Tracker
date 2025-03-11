@@ -3,7 +3,8 @@
  * Main map component for the Location Tracker application
  */
 
-import { EventBus, Events } from '../../app/EventBus';
+import { eventBus as EventBus } from '../../app/EventBus';
+import { Events } from '../../app/EventTypes';
 import { stateManager } from '../../services/StateManager';
 import { 
   initMapService, 

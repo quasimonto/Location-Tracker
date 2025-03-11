@@ -47,218 +47,6 @@ class FamilyForm {
   }
   
   /**
-   * Handle field change event
-   * @param {string} fieldName - Field name
-   * @param {*} value - New value
-   */
-  handleFieldChange(fieldName, value) {
-    // Handle head or spouse change to update available options
-    if (fieldName === 'headId' || fieldName === 'spouseId') {
-      // Re-render children field to update available options
-      const childrenField = this.form.fields.find(f => f.name === 'childrenIds');
-      if (childrenField) {
-        const childrenContainer = document.querySelector('.children-field');
-        if (childrenContainer) {
-          const newContainer = childrenField.render(childrenField, this.form);
-          childrenContainer.replaceWith(newContainer);
-        }
-      }
-    }
-  }
-  
-  /**
-   * Generate a random color
-   * @returns {string} Random color hex
-   */
-  getRandomColor() {
-    const letters = '0123456789ABCDEF';
-    let color = '#';
-    for (let i = 0; i < 6; i++) {
-      color += letters[Math.floor(Math.random() * 16)];
-    }
-    return color;
-  }
-  
-  /**
-   * Show a toast notification
-   * @param {string} message - Message to display
-   * @param {string} type - Toast type ('info', 'success', 'warning', 'error')
-   */
-  showToast(message, type = 'info') {
-    // Create toast container if it doesn't exist
-    let toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) {
-      toastContainer = document.createElement('div');
-      toastContainer.id = 'toast-container';
-      toastContainer.className = 'toast-container';
-      document.body.appendChild(toastContainer);
-    }
-    
-    // Create toast element
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.innerHTML = `
-      <div class="toast-content">
-        <span class="toast-message">${message}</span>
-      </div>
-    `;
-    
-    // Add to container
-    toastContainer.appendChild(toast);
-    
-    // Auto remove after a delay
-    setTimeout(() => {
-      toast.classList.add('toast-hide');
-      setTimeout(() => {
-        if (toast.parentNode) {
-          toast.parentNode.removeChild(toast);
-        }
-      }, 300);
-    }, 3000);
-  }
-  
-  /**
-   * Handle form save
-   */
-  handleSave() {
-    // Validate the form
-    if (!this.validateForm()) {
-      return;
-    }
-    
-    // Get form values
-    const values = this.form.getValues();
-    
-    // Prepare family data
-    const familyData = this.buildFamilyData(values);
-    
-    try {
-      // Save the family
-      if (this.options.mode === FormMode.CREATE) {
-        // Create new family
-        const family = familyService.createFamily(familyData);
-        
-        // Call onSave callback if provided
-        if (typeof this.options.onSave === 'function') {
-          this.options.onSave(family);
-        }
-        
-        // Show success message
-        this.showToast('Family created successfully', 'success');
-      } else {
-        // Update existing family
-        const family = familyService.updateFamily(familyData.id, familyData);
-        
-        // Call onSave callback if provided
-        if (typeof this.options.onSave === 'function') {
-          this.options.onSave(family);
-        }
-        
-        // Show success message
-        this.showToast('Family updated successfully', 'success');
-      }
-      
-      // Close the modal
-      this.closeForm();
-    } catch (error) {
-      // Show error message
-      this.showToast(`Error: ${error.message}`, 'error');
-    }
-  }
-  
-  /**
-   * Build family data from form values
-   * @param {Object} values - Form values
-   * @returns {Object} Family data
-   */
-  buildFamilyData(values) {
-    // Build family data
-    return {
-      id: values.id || undefined, // For update mode
-      name: values.name,
-      color: values.color,
-      headId: values.headId || null,
-      spouseId: values.spouseId || null,
-      childrenIds: values.childrenIds || []
-    };
-  }
-  
-  /**
-   * Validate the form
-   * @returns {boolean} Whether the form is valid
-   */
-  validateForm() {
-    // Check if form exists
-    if (!this.form) {
-      return false;
-    }
-    
-    // Get form values
-    const values = this.form.getValues();
-    
-    // Validate required fields
-    if (!values.name || values.name.trim() === '') {
-      this.showToast('Family name is required', 'error');
-      return false;
-    }
-    
-    if (!values.color) {
-      this.showToast('Family color is required', 'error');
-      return false;
-    }
-    
-    // Validate color format
-    const colorRegex = /^#[0-9A-Fa-f]{6}$/;
-    if (!colorRegex.test(values.color)) {
-      this.showToast('Invalid color format', 'error');
-      return false;
-    }
-    
-    // A family must have a head
-    if (!values.headId) {
-      this.showToast('Family head is required', 'error');
-      return false;
-    }
-    
-    return true;
-  }
-  
-  /**
-   * Handle form cancel
-   */
-  handleCancel() {
-    // Call onCancel callback if provided
-    if (typeof this.options.onCancel === 'function') {
-      this.options.onCancel();
-    }
-    
-    // Close the form
-    this.closeForm();
-  }
-  
-  /**
-   * Close the form and clean up
-   */
-  closeForm() {
-    // Close the modal
-    if (this.modal) {
-      this.modal.destroy();
-      this.modal = null;
-    }
-  }
-  
-  /**
-   * Factory method to create a family form
-   * @param {Object} options - Configuration options
-   * @returns {FamilyForm} New FamilyForm instance
-   * @static
-   */
-  static create(options = {}) {
-    return new FamilyForm(options);
-  }
-}
-
-export default FamilyForm;
    * Create the form
    */
   createForm() {
@@ -496,6 +284,8 @@ export default FamilyForm;
     });
   }
   
+  // Add all other methods here
+  
   /**
    * Prepare initial values for the form in edit mode
    * @param {Object} family - Family data
@@ -574,3 +364,219 @@ export default FamilyForm;
       }
       
       return true;
+    });
+  }
+  
+  /**
+   * Get a random color for the family
+   * @returns {string} Random color in hex format
+   */
+  getRandomColor() {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+  }
+  
+  /**
+   * Handle field change event
+   * @param {string} fieldName - Field name
+   * @param {*} value - New value
+   */
+  handleFieldChange(fieldName, value) {
+    // Handle head or spouse change to update available options
+    if (fieldName === 'headId' || fieldName === 'spouseId') {
+      // Re-render children field to update available options
+      const childrenField = this.form.fields.find(f => f.name === 'childrenIds');
+      if (childrenField) {
+        const childrenContainer = document.querySelector('.children-field');
+        if (childrenContainer) {
+          const newContainer = childrenField.render(childrenField, this.form);
+          childrenContainer.replaceWith(newContainer);
+        }
+      }
+    }
+  }
+  
+  /**
+   * Show a toast notification
+   * @param {string} message - Message to display
+   * @param {string} type - Toast type ('info', 'success', 'warning', 'error')
+   */
+  showToast(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toast-container';
+      toastContainer.className = 'toast-container';
+      document.body.appendChild(toastContainer);
+    }
+    
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+      <div class="toast-content">
+        <span class="toast-message">${message}</span>
+      </div>
+    `;
+    
+    // Add to container
+    toastContainer.appendChild(toast);
+    
+    // Auto remove after a delay
+    setTimeout(() => {
+      toast.classList.add('toast-hide');
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 3000);
+  }
+  
+  /**
+   * Handle form save
+   */
+  handleSave() {
+    // Validate the form
+    if (!this.validateForm()) {
+      return;
+    }
+    
+    // Get form values
+    const values = this.form.getValues();
+    
+    // Prepare family data
+    const familyData = this.buildFamilyData(values);
+    
+    try {
+      // Save the family
+      if (this.options.mode === FormMode.CREATE) {
+        // Create new family
+        const family = familyService.createFamily(familyData);
+        
+        // Call onSave callback if provided
+        if (typeof this.options.onSave === 'function') {
+          this.options.onSave(family);
+        }
+        
+        // Show success message
+        this.showToast('Family created successfully', 'success');
+      } else {
+        // Update existing family
+        const family = familyService.updateFamily(familyData.id, familyData);
+        
+        // Call onSave callback if provided
+        if (typeof this.options.onSave === 'function') {
+          this.options.onSave(family);
+        }
+        
+        // Show success message
+        this.showToast('Family updated successfully', 'success');
+      }
+      
+      // Close the modal
+      this.closeForm();
+    } catch (error) {
+      // Show error message
+      this.showToast(`Error: ${error.message}`, 'error');
+    }
+  }
+  
+  /**
+   * Build family data from form values
+   * @param {Object} values - Form values
+   * @returns {Object} Family data
+   */
+  buildFamilyData(values) {
+    // Build family data
+    return {
+      id: values.id || undefined, // For update mode
+      name: values.name,
+      color: values.color,
+      headId: values.headId || null,
+      spouseId: values.spouseId || null,
+      childrenIds: values.childrenIds || []
+    };
+  }
+  
+  /**
+   * Validate the form
+   * @returns {boolean} Whether the form is valid
+   */
+  validateForm() {
+    // Check if form exists
+    if (!this.form) {
+      return false;
+    }
+    
+    // Get form values
+    const values = this.form.getValues();
+    
+    // Validate required fields
+    if (!values.name || values.name.trim() === '') {
+      this.showToast('Family name is required', 'error');
+      return false;
+    }
+    
+    if (!values.color) {
+      this.showToast('Family color is required', 'error');
+      return false;
+    }
+    
+    // Validate color format
+    const colorRegex = /^#[0-9A-Fa-f]{6}$/;
+    if (!colorRegex.test(values.color)) {
+      this.showToast('Invalid color format', 'error');
+      return false;
+    }
+    
+    // A family must have a head
+    if (!values.headId) {
+      this.showToast('Family head is required', 'error');
+      return false;
+    }
+    
+    return true;
+  }
+  
+  /**
+   * Handle form cancel
+   */
+  handleCancel() {
+    // Call onCancel callback if provided
+    if (typeof this.options.onCancel === 'function') {
+      this.options.onCancel();
+    }
+    
+    // Close the form
+    this.closeForm();
+  }
+  
+  /**
+   * Close the form and clean up
+   */
+  closeForm() {
+    // Close the modal
+    if (this.modal) {
+      this.modal.destroy();
+      this.modal = null;
+    }
+  }
+  
+  /**
+   * Factory method to create a family form
+   * @param {Object} options - Configuration options
+   * @returns {FamilyForm} New FamilyForm instance
+   * @static
+   */
+  static create(options = {}) {
+    return new FamilyForm(options);
+  }
+}
+
+export default FamilyForm;
