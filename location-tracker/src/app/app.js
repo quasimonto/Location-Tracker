@@ -9,10 +9,14 @@ import { initMapService } from '../services/MapService';
 import { createSidebar } from '../ui/components/Sidebar';
 import { loadGoogleMapsApi } from '../utils/mapUtils';
 import { formManager } from '../ui/components/FormManager';
+import { createMapContainer } from '../ui/map';
 
 // Default map configuration
 const DEFAULT_CENTER = { lat: 48.2082, lng: 16.3738 }; // Vienna, Austria
 const DEFAULT_ZOOM = 13;
+
+// Store global app references
+let mapContainer = null;
 
 /**
  * Initialize the application

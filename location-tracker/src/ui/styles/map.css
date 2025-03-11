@@ -1,0 +1,263 @@
+/**
+ * map.css
+ * Styles for map components
+ */
+
+/* Map container */
+#map {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+  
+  /* Info window styles */
+  .info-window {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+      Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    max-width: 320px;
+    padding: 0;
+  }
+  
+  .info-header {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e0e0e0;
+    background-color: #f5f5f5;
+    border-radius: 6px 6px 0 0;
+  }
+  
+  .info-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #333;
+  }
+  
+  .info-content {
+    padding: 15px;
+  }
+  
+  .info-group {
+    margin-bottom: 10px;
+  }
+  
+  .info-label {
+    font-weight: 500;
+    color: #555;
+    display: block;
+    margin-bottom: 3px;
+  }
+  
+  .info-value {
+    color: #333;
+  }
+  
+  .group-value {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    color: white;
+    font-weight: 500;
+  }
+  
+  .family-value {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background-color: #f0f0f0;
+    color: #333;
+  }
+  
+  .roles-value {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  
+  .role-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background-color: #e0e0e0;
+    color: #333;
+    font-size: 0.85em;
+  }
+  
+  .info-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding: 10px 15px 15px;
+    gap: 8px;
+  }
+  
+  .info-button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .edit-button {
+    background-color: #4285f4;
+    color: white;
+  }
+  
+  .edit-button:hover {
+    background-color: #3367d6;
+  }
+  
+  .travel-button, .assign-button, .view-button {
+    background-color: #f1f3f4;
+    color: #3c4043;
+  }
+  
+  .travel-button:hover, .assign-button:hover, .view-button:hover {
+    background-color: #e8eaed;
+  }
+  
+  .delete-button {
+    background-color: #ea4335;
+    color: white;
+  }
+  
+  .delete-button:hover {
+    background-color: #d23f31;
+  }
+  
+  .description-value {
+    white-space: pre-line;
+    max-height: 80px;
+    overflow-y: auto;
+    padding: 5px;
+    background-color: #f9f9f9;
+    border-radius: 3px;
+  }
+  
+  .family-members {
+    margin-top: 5px;
+  }
+  
+  .family-member {
+    margin-bottom: 8px;
+  }
+  
+  .member-role {
+    font-weight: 500;
+    margin-right: 10px;
+  }
+  
+  .member-list {
+    margin-left: 15px;
+    margin-top: 5px;
+  }
+  
+  .child-name {
+    margin-bottom: 3px;
+  }
+  
+  /* Map controls */
+  .map-control {
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    padding: 10px;
+    margin: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .control-label {
+    font-weight: 500;
+    margin-bottom: 8px;
+    color: #333;
+    font-size: 0.9em;
+  }
+  
+  .control-button {
+    background-color: white;
+    border: 1px solid #dadce0;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+    width: 100%;
+  }
+  
+  .control-button:last-child {
+    margin-bottom: 0;
+  }
+  
+  .control-button:hover {
+    background-color: #f5f5f5;
+  }
+  
+  .control-button.active {
+    background-color: #e8f0fe;
+    border-color: #4285f4;
+    color: #4285f4;
+  }
+  
+  .button-icon {
+    margin-right: 6px;
+  }
+  
+  .add-controls {
+    margin-top: 70px;
+  }
+  
+  .view-controls {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .view-controls .control-button {
+    margin-bottom: 0;
+    width: auto;
+  }
+  
+  /* Error display */
+  .map-error {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+    padding: 20px;
+    border-radius: 6px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    max-width: 80%;
+  }
+  
+  .map-error-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    color: #ea4335;
+  }
+  
+  .map-error-message {
+    margin-bottom: 15px;
+    font-weight: 500;
+  }
+  
+  .map-error-retry {
+    background-color: #4285f4;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.2s;
+  }
+  
+  .map-error-retry:hover {
+    background-color: #3367d6;
+  }
