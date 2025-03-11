@@ -1,0 +1,440 @@
+/**
+ * dashboard.css
+ * Styles for the dashboard view
+ */
+
+/* Dashboard Container */
+.dashboard-container {
+    padding: 20px;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  
+  .dashboard-title {
+    margin-top: 0;
+    margin-bottom: 24px;
+    font-size: 1.8rem;
+    color: #333;
+    text-align: center;
+  }
+  
+  /* Loading and Error States */
+  .dashboard-loading,
+  .dashboard-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    text-align: center;
+  }
+  
+  .loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid #e0e0e0;
+    border-top: 3px solid #4285f4;
+    border-radius: 50%;
+    margin-bottom: 16px;
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  
+  .error-icon {
+    font-size: 36px;
+    margin-bottom: 12px;
+    color: #ea4335;
+  }
+  
+  .retry-button {
+    margin-top: 16px;
+    padding: 8px 16px;
+    background-color: #4285f4;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .retry-button:hover {
+    background-color: #3367d6;
+  }
+  
+  /* Dashboard Sections */
+  .dashboard-section {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  
+  .section-title {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 1.2rem;
+    color: #333;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 8px;
+  }
+  
+  /* Stat Cards */
+  .stat-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  
+  .stat-card {
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+  }
+  
+  .stat-card:hover {
+    transform: translateY(-2px);
+  }
+  
+  .stat-value {
+    font-size: 24px;
+    font-weight: 600;
+    color: #4285f4;
+    margin-bottom: 8px;
+  }
+  
+  .stat-label {
+    font-size: 14px;
+    color: #666;
+  }
+  
+  .stat-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+  
+  /* Stat Summary */
+  .stat-summary {
+    background-color: #f5f5f5;
+    border-radius: 6px;
+    padding: 12px 16px;
+  }
+  
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  
+  .summary-row:last-child {
+    margin-bottom: 0;
+  }
+  
+  .summary-label {
+    font-weight: 500;
+    color: #555;
+  }
+  
+  .summary-value {
+    color: #333;
+  }
+  
+  /* Role Distribution Chart */
+  .role-chart {
+    margin-top: 16px;
+  }
+  
+  .role-chart-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .role-bar-item {
+    display: flex;
+    align-items: center;
+  }
+  
+  .role-label {
+    width: 100px;
+    flex-shrink: 0;
+    font-weight: 500;
+    text-align: right;
+    padding-right: 10px;
+    color: #555;
+  }
+  
+  .role-bar-container {
+    flex: 1;
+    height: 24px;
+    background-color: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  
+  .role-bar {
+    height: 100%;
+    background-color: #4285f4;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 8px;
+    color: white;
+    font-weight: 500;
+    min-width: 30px;
+    transition: width 0.5s ease-out;
+  }
+  
+  .role-value {
+    margin-right: 8px;
+  }
+  
+  /* Tables */
+  .table-responsive {
+    overflow-x: auto;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .dashboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+  }
+  
+  .dashboard-table th,
+  .dashboard-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .dashboard-table th {
+    background-color: #f5f5f5;
+    font-weight: 500;
+    color: #333;
+  }
+  
+  .dashboard-table tr:last-child td {
+    border-bottom: none;
+  }
+  
+  .dashboard-table tr:hover {
+    background-color: #f9f9f9;
+  }
+  
+  /* Group Table */
+  .groups-table .group-name {
+    font-weight: 500;
+  }
+  
+  .requirements-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: 500;
+  }
+  
+  .requirements-badge.met {
+    background-color: #e8f5e9;
+    color: #2e7d32;
+  }
+  
+  .requirements-badge.not-met {
+    background-color: #ffebee;
+    color: #c62828;
+  }
+  
+  .roles-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  
+  .role-tag {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background-color: #f1f3f4;
+    color: #3c4043;
+    font-size: 0.85em;
+  }
+  
+  /* Family Table */
+  .families-table .family-name {
+    font-weight: 500;
+  }
+  
+  .family-structure {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .structure-icon {
+    background-color: #f1f3f4;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+  
+  .group-percentage {
+    width: 100%;
+    max-width: 200px;
+  }
+  
+  .percentage-bar {
+    height: 8px;
+    background-color: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+  
+  .percentage-fill {
+    height: 100%;
+    background-color: #4285f4;
+    min-width: 4px;
+    transition: width 0.5s ease-out;
+  }
+  
+  .percentage-label {
+    font-size: 0.85em;
+    color: #666;
+  }
+  
+  /* Travel Stats */
+  .travel-stats {
+    margin-top: 16px;
+  }
+  
+  .avg-travel-times {
+    margin-bottom: 24px;
+  }
+  
+  .travel-extremes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  
+  .travel-extreme {
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    padding: 16px;
+  }
+  
+  .travel-extreme h4 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: #333;
+    font-size: 16px;
+  }
+  
+  .extreme-details {
+    background-color: white;
+    border-radius: 6px;
+    padding: 12px;
+  }
+  
+  .extreme-pair {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  
+  .extreme-person,
+  .extreme-meeting {
+    font-weight: 500;
+  }
+  
+  .extreme-distance {
+    color: #666;
+    font-size: 0.9em;
+  }
+  
+  .extreme-travel-times {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  
+  .travel-time {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.9em;
+    color: #333;
+  }
+  
+  .travel-icon {
+    font-size: 14px;
+  }
+  
+  .travel-matrix {
+    margin-top: 24px;
+  }
+  
+  .travel-matrix h4 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: #333;
+    font-size: 16px;
+  }
+  
+  /* Media Queries */
+  @media (max-width: 768px) {
+    .stat-cards {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .travel-extremes {
+      grid-template-columns: 1fr;
+    }
+    
+    .role-label {
+      width: 80px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .dashboard-container {
+      padding: 12px;
+    }
+    
+    .dashboard-section {
+      padding: 16px;
+    }
+    
+    .stat-cards {
+      grid-template-columns: 1fr;
+    }
+    
+    .role-bar-item {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .role-label {
+      width: auto;
+      text-align: left;
+      padding-right: 0;
+      margin-bottom: 4px;
+    }
+    
+    .dashboard-table th,
+    .dashboard-table td {
+      padding: 8px;
+    }
+  }

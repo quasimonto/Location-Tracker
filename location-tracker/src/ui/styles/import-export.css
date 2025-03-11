@@ -1,0 +1,260 @@
+/**
+ * import-export.css
+ * Styles for import/export functionality
+ */
+
+/* Import/Export Container */
+.import-export-container {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+      Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    width: 100%;
+  }
+  
+  /* Tabs */
+  .import-export-tabs {
+    display: flex;
+    border-bottom: 1px solid #e0e0e0;
+    margin-bottom: 20px;
+  }
+  
+  .tab-button {
+    padding: 10px 20px;
+    background-color: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-weight: 500;
+    color: #666;
+    transition: all 0.2s ease;
+  }
+  
+  .tab-button:hover {
+    color: #4285f4;
+  }
+  
+  .tab-button.active {
+    color: #4285f4;
+    border-bottom-color: #4285f4;
+  }
+  
+  /* Tab Content */
+  .tab-content {
+    display: none;
+    padding: 10px 0;
+  }
+  
+  .tab-content.active {
+    display: block;
+  }
+  
+  .tab-description {
+    margin-bottom: 20px;
+    color: #666;
+  }
+  
+  /* Option Sections */
+  .option-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f5f5f5;
+    border-radius: 6px;
+  }
+  
+  .option-section h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 16px;
+    color: #333;
+  }
+  
+  /* Radio & Checkbox Groups */
+  .radio-group,
+  .checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .radio-label,
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  
+  /* File Input */
+  .file-input-container {
+    margin-top: 10px;
+  }
+  
+  .file-description {
+    margin-top: 8px;
+    font-size: 0.9em;
+    color: #666;
+  }
+  
+  /* Import Preview */
+  .import-preview {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f8f8f8;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+  }
+  
+  .import-preview h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 16px;
+    color: #333;
+  }
+  
+  .preview-message {
+    margin: 15px 0;
+    color: #666;
+  }
+  
+  .preview-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    margin: 15px 0;
+  }
+  
+  .stat-item {
+    background-color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  
+  .stat-label {
+    font-weight: 500;
+    color: #555;
+  }
+  
+  .preview-warning {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #fff3e0;
+    border-left: 3px solid #ff9800;
+    border-radius: 4px;
+  }
+  
+  .preview-warning p {
+    margin: 0;
+    color: #e65100;
+    font-size: 0.9em;
+  }
+  
+  /* Action Buttons */
+  .action-buttons {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 20px;
+    gap: 10px;
+  }
+  
+  /* Results Panel */
+  .results-panel {
+    padding: 20px 0;
+  }
+  
+  .results-title {
+    margin-top: 0;
+    margin-bottom: 20px;
+    text-align: center;
+    color: #333;
+  }
+  
+  .results-content {
+    max-width: 500px;
+    margin: 0 auto;
+  }
+  
+  .success-message {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #e8f5e9;
+    border-radius: 6px;
+  }
+  
+  .success-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background-color: #4caf50;
+    color: white;
+    font-size: 20px;
+    border-radius: 50%;
+  }
+  
+  .success-text h4 {
+    margin: 0 0 5px 0;
+    color: #2e7d32;
+  }
+  
+  .success-text p {
+    margin: 0;
+    color: #388e3c;
+  }
+  
+  .export-details,
+  .import-details {
+    margin-top: 20px;
+    background-color: #f5f5f5;
+    border-radius: 6px;
+    padding: 15px;
+  }
+  
+  .detail-item {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .detail-label {
+    font-weight: 500;
+    color: #555;
+    width: 100px;
+    flex-shrink: 0;
+  }
+  
+  .detail-value {
+    color: #333;
+  }
+  
+  .detail-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+    margin-top: 15px;
+  }
+  
+  /* Media Queries */
+  @media (max-width: 600px) {
+    .radio-group,
+    .checkbox-group {
+      gap: 15px;
+    }
+    
+    .preview-stats,
+    .detail-stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .detail-item {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    
+    .detail-label {
+      margin-bottom: 5px;
+    }
+  }

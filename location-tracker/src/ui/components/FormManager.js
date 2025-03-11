@@ -18,10 +18,40 @@ class FormManager {
     this.setupEventSubscriptions();
   }
   
+    /**
+ * Open the import/export modal
+ * @param {string} initialTab - Initial tab to show ('export' or 'import')
+ */
+    openImportExportModal(initialTab = 'export') {
+    // Import the modal dynamically to avoid circular dependencies
+    import('./ImportExportModal').then(module => {
+      const ImportExportModal = module.default;
+      
+      ImportExportModal.create({
+        initialTab,
+        onComplete: () => {
+          // Refresh UI components after import/export
+          EventBus.publish(Events.DATA_UPDATED);
+        }
+      });
+    }).catch(error => {
+      console.error('Error loading ImportExportModal:', error);
+    });
+  }
+
+
   /**
    * Set up event subscriptions for form creation
    */
   setupEventSubscriptions() {
+    //Import-Export forms
+    EventBus.on(Events.EXPORT_DATA_CLICKED, () => {
+        this.openImportExportModal();
+      });
+      
+      EventBus.on(Events.IMPORT_DATA_CLICKED, () => {
+        this.openImportExportModal('import');
+      });
     // Person forms
     EventBus.on(Events.ADD_PERSON_CLICKED, () => {
       this.createPersonForm();

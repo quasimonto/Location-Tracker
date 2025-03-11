@@ -103,6 +103,12 @@ export const Events = {
     IMPORT_FILE_SELECTED: 'importFileSelected',
     IMPORT_COMPLETED: 'importCompleted',
     EXPORT_COMPLETED: 'exportCompleted',
+
+    
+    // Data import/export events
+    DATA_IMPORTED: 'dataImported',
+    DATA_EXPORTED: 'dataExported',
+    DATA_UPDATED: 'dataUpdated',
     
     // Travel time events
     TRAVEL_TIME_CALCULATED: 'travelTimeCalculated',
