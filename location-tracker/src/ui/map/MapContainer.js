@@ -3,8 +3,7 @@
  * Main map component for the Location Tracker application
  */
 
-import { eventBus as EventBus } from '../../app/EventBus';
-import { Events } from '../../app/EventTypes';
+import { EventBus, Events } from '../../app/EventTypes';
 import { stateManager } from '../../services/StateManager';
 import { 
   initMapService, 
@@ -23,6 +22,9 @@ import meetingService from '../../services/MeetingService';
 import groupService from '../../services/GroupService';
 import InfoWindow from './InfoWindow';
 import MapControls from './MapControls';
+import TravelTimePanel from '../components/TravelTimePanel';
+import GroupVisualization from './GroupVisualization';
+import workflowController from '../../controllers/WorkflowController';
 
 /**
  * MapContainer class for the main map display
@@ -54,6 +56,12 @@ class MapContainer {
     // Map controls
     this.mapControls = null;
     
+    // Travel time panel
+    this.travelTimePanel = null;
+    
+    // Group visualization
+    this.groupVisualization = null;
+    
     // Selected entity
     this.selectedEntityId = null;
     this.selectedEntityType = null;
@@ -83,6 +91,12 @@ class MapContainer {
       // Create map controls
       this.mapControls = new MapControls(this.map);
       
+      // Create travel time panel
+      this.travelTimePanel = TravelTimePanel.create(document.body);
+      
+      // Create group visualization
+      this.groupVisualization = GroupVisualization.create(this.map);
+      
       // Subscribe to state changes
       this.subscribeToStateChanges();
       
@@ -91,6 +105,9 @@ class MapContainer {
       
       // Initialize markers
       this.initializeMarkers();
+      
+      // Initialize group visualizations
+      this.initializeGroupVisualizations();
       
       // Publish map ready event
       EventBus.publish(Events.MAP_READY, this.map);
@@ -183,6 +200,32 @@ class MapContainer {
       this.selectEntity(meeting.id, 'meeting');
     });
     
+    // Group events
+    EventBus.on(Events.GROUP_CREATED, (group) => {
+      if (this.groupVisualization) {
+        this.groupVisualization.visualizeGroup(group.id);
+      }
+    });
+    
+    EventBus.on(Events.GROUP_UPDATED, (group) => {
+      if (this.groupVisualization) {
+        this.groupVisualization.updateGroupVisualization(group.id);
+      }
+    });
+    
+    EventBus.on(Events.GROUP_DELETED, (groupId) => {
+      if (this.groupVisualization) {
+        this.groupVisualization.removeGroupVisualization(groupId);
+      }
+    });
+    
+    // Travel time events
+    EventBus.on(Events.SHOW_TRAVEL_TIMES, (origin) => {
+      if (this.travelTimePanel) {
+        this.travelTimePanel.show(origin, this.getEntityType(origin));
+      }
+    });
+    
     // Map action events
     EventBus.on(Events.CENTER_MAP, (location) => {
       this.centerMap(location);
@@ -221,6 +264,25 @@ class MapContainer {
       errorHandler.handleError(
         error,
         'Initializing Markers',
+        ErrorSeverity.WARNING,
+        ErrorType.MAP
+      );
+    }
+  }
+  
+  /**
+   * Initialize group visualizations
+   */
+  initializeGroupVisualizations() {
+    try {
+      // Visualize all groups
+      if (this.groupVisualization) {
+        this.groupVisualization.visualizeAllGroups();
+      }
+    } catch (error) {
+      errorHandler.handleError(
+        error,
+        'Initializing Group Visualizations',
         ErrorSeverity.WARNING,
         ErrorType.MAP
       );
@@ -608,6 +670,11 @@ class MapContainer {
           marker.setVisible(visibility.meetings);
         });
       }
+      
+      // Update group visualizations
+      if (visibility.groups !== undefined && this.groupVisualization) {
+        this.groupVisualization.setVisibility(visibility.groups);
+      }
     } catch (error) {
       errorHandler.handleError(
         error,
@@ -827,6 +894,28 @@ class MapContainer {
         ErrorType.MAP
       );
     }
+  }
+  
+  /**
+   * Get entity type from an entity object
+   * @param {Object} entity - Entity object
+   * @returns {string} Entity type ('person', 'meeting', 'group', or 'family')
+   */
+  getEntityType(entity) {
+    if (!entity) return null;
+    
+    // Check based on properties
+    if (entity.elder !== undefined || entity.servant !== undefined) {
+      return 'person';
+    } else if (entity.description !== undefined) {
+      return 'meeting';
+    } else if (entity.requirements !== undefined) {
+      return 'group';
+    } else if (entity.headId !== undefined || entity.spouseId !== undefined) {
+      return 'family';
+    }
+    
+    return null;
   }
   
   /**

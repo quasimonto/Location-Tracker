@@ -10,6 +10,7 @@ import { createSidebar } from '../ui/components/Sidebar';
 import { loadGoogleMapsApi } from '../utils/mapUtils';
 import { formManager } from '../ui/components/FormManager';
 import { createMapContainer } from '../ui/map';
+import workflowController from '../controllers/WorkflowController';
 
 // Default map configuration
 const DEFAULT_CENTER = { lat: 48.2082, lng: 16.3738 }; // Vienna, Austria
@@ -39,6 +40,9 @@ export async function initApp() {
     
     // Initialize form manager to handle form events
     initFormManager();
+
+    // Initialize workflow controller
+    console.log('Initializing Workflow Controller...');
     
     console.log('Application initialized successfully');
   } catch (error) {
