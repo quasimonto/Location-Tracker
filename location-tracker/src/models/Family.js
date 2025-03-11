@@ -1,13 +1,12 @@
 /**
  * Family.js
- * Model representing a family in the Location Tracker application
+ * Model representing a family unit in the Location Tracker application
  */
 
 import { errorHandler, ErrorType, ErrorSeverity } from '../utils/errorHandler';
-import { getRandomColor } from '../utils/mapUtils';
 
 /**
- * Family class representing family relationships between persons
+ * Family class representing a family unit with relationships between people
  */
 class Family {
   /**
@@ -18,23 +17,15 @@ class Family {
     // Core identity properties
     this.id = data.id || `family_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     this.name = data.name || 'New Family';
+    this.color = data.color || this.generateRandomColor();
     
-    // Family relationships
+    // Member references
     this.headId = data.headId || null;
     this.spouseId = data.spouseId || null;
     this.childrenIds = Array.isArray(data.childrenIds) ? [...data.childrenIds] : [];
     
-    // Appearance
-    this.color = data.color || getRandomColor();
-    
-    // Metadata
-    this.createdAt = data.createdAt || Date.now();
-    this.updatedAt = data.updatedAt || Date.now();
-    
-    // Transient properties (not persisted)
-    this._head = null;
-    this._spouse = null;
-    this._children = [];
+    // Display properties (transient, not persisted)
+    this._visible = true;
     this._selected = false;
   }
   
@@ -48,20 +39,13 @@ class Family {
     
     // Name must be non-empty
     if (!this.name || this.name.trim() === '') {
-      errors.push('Name is required');
+      errors.push('Family name is required');
       isValid = false;
     }
     
-    // Family head is required
+    // A family must have a head
     if (!this.headId) {
       errors.push('Family head is required');
-      isValid = false;
-    }
-    
-    // Color must be a valid hex color
-    const hexColorRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
-    if (!this.color || !hexColorRegex.test(this.color)) {
-      errors.push('Color must be a valid hex color (e.g., #FF0000)');
       isValid = false;
     }
     
@@ -87,12 +71,10 @@ class Family {
     return {
       id: this.id,
       name: this.name,
+      color: this.color,
       headId: this.headId,
       spouseId: this.spouseId,
-      childrenIds: [...this.childrenIds],
-      color: this.color,
-      createdAt: this.createdAt,
-      updatedAt: Date.now() // Update timestamp on save
+      childrenIds: [...this.childrenIds]
     };
   }
   
@@ -106,87 +88,155 @@ class Family {
   }
   
   /**
-   * Update the family with new data
-   * @param {Object} data - New family data
+   * Generate a random color for the family
+   * @returns {string} Random color as hex
    */
-  update(data) {
-    // Update properties if provided
-    if (data.name !== undefined) {
-      this.name = data.name;
+  generateRandomColor() {
+    const letters = '0123456789ABCDEF';
+    let color = '#';
+    for (let i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
     }
+    return color;
+  }
+  
+  /**
+   * Add a child to the family
+   * @param {string} personId - ID of the person to add as a child
+   * @returns {boolean} Success status
+   */
+  addChild(personId) {
+    if (!personId) return false;
     
-    if (data.color !== undefined) {
-      this.color = data.color;
-    }
+    // Check if already a child in this family
+    if (this.childrenIds.includes(personId)) return false;
     
-    if (data.headId !== undefined) {
-      this.headId = data.headId;
-    }
+    // Add to children
+    this.childrenIds.push(personId);
+    return true;
+  }
+  
+  /**
+   * Remove a child from the family
+   * @param {string} personId - ID of the child to remove
+   * @returns {boolean} Success status
+   */
+  removeChild(personId) {
+    const index = this.childrenIds.indexOf(personId);
+    if (index === -1) return false;
     
-    if (data.spouseId !== undefined) {
-      this.spouseId = data.spouseId;
-    }
-    
-    if (data.childrenIds !== undefined) {
-      this.childrenIds = Array.isArray(data.childrenIds) ? [...data.childrenIds] : [];
-    }
-    
-    // Update the timestamp
-    this.updatedAt = Date.now();
+    this.childrenIds.splice(index, 1);
+    return true;
   }
   
   /**
    * Set the family head
-   * Note: This updates the reference, not the ID
-   * @param {Object} head - Person object who is the family head
+   * @param {string} personId - ID of the person to set as head
+   * @returns {boolean} Success status
    */
-  set head(head) {
-    this._head = head;
-    this.headId = head ? head.id : null;
+  setHead(personId) {
+    if (!personId) return false;
+    
+    // If this person is currently a child, remove from children
+    this.removeChild(personId);
+    
+    // If this person is currently the spouse, clear spouse
+    if (this.spouseId === personId) {
+      this.spouseId = null;
+    }
+    
+    this.headId = personId;
+    return true;
   }
   
   /**
-   * Get the family head
-   * @returns {Object} Person object who is the family head
+   * Set the family spouse
+   * @param {string} personId - ID of the person to set as spouse
+   * @returns {boolean} Success status
    */
-  get head() {
-    return this._head;
+  setSpouse(personId) {
+    if (!personId) return false;
+    
+    // If this person is currently a child, remove from children
+    this.removeChild(personId);
+    
+    // If this person is currently the head, can't be spouse
+    if (this.headId === personId) return false;
+    
+    this.spouseId = personId;
+    return true;
   }
   
   /**
-   * Set the spouse
-   * Note: This updates the reference, not the ID
-   * @param {Object} spouse - Person object who is the spouse
+   * Get the total number of family members
+   * @returns {number} Number of family members
    */
-  set spouse(spouse) {
-    this._spouse = spouse;
-    this.spouseId = spouse ? spouse.id : null;
+  get memberCount() {
+    let count = 0;
+    if (this.headId) count++;
+    if (this.spouseId) count++;
+    count += this.childrenIds.length;
+    return count;
   }
   
   /**
-   * Get the spouse
-   * @returns {Object} Person object who is the spouse
+   * Check if a person is a member of this family
+   * @param {string} personId - ID of the person to check
+   * @returns {boolean} Whether the person is a member
    */
-  get spouse() {
-    return this._spouse;
+  isMember(personId) {
+    return (
+      this.headId === personId ||
+      this.spouseId === personId ||
+      this.childrenIds.includes(personId)
+    );
   }
   
   /**
-   * Set the children
-   * Note: This updates the references, not the IDs
-   * @param {Array} children - Array of Person objects who are children
+   * Get the role of a person in the family
+   * @param {string} personId - ID of the person to check
+   * @returns {string|null} Role ('head', 'spouse', 'child') or null if not a member
    */
-  set children(children) {
-    this._children = Array.isArray(children) ? [...children] : [];
-    this.childrenIds = children.map(child => child.id);
+  getMemberRole(personId) {
+    if (this.headId === personId) return 'head';
+    if (this.spouseId === personId) return 'spouse';
+    if (this.childrenIds.includes(personId)) return 'child';
+    return null;
   }
   
   /**
-   * Get the children
-   * @returns {Array} Array of Person objects who are children
+   * Remove a member from the family
+   * @param {string} personId - ID of the person to remove
+   * @returns {boolean} Success status
    */
-  get children() {
-    return this._children;
+  removeMember(personId) {
+    if (this.headId === personId) {
+      this.headId = null;
+      return true;
+    }
+    
+    if (this.spouseId === personId) {
+      this.spouseId = null;
+      return true;
+    }
+    
+    return this.removeChild(personId);
+  }
+  
+  /**
+   * Set whether this family is visible
+   * @param {boolean} visible - Whether the family is visible
+   */
+  set visible(visible) {
+    this._visible = Boolean(visible);
+  }
+  
+  /**
+   * Get whether this family is visible
+   * @returns {boolean} Whether the family is visible
+   */
+  get visible() {
+    return this._visible;
   }
   
   /**
@@ -203,157 +253,6 @@ class Family {
    */
   get selected() {
     return this._selected;
-  }
-  
-  /**
-   * Get the total number of family members
-   * @returns {number} Total number of family members
-   */
-  get memberCount() {
-    return (this.headId ? 1 : 0) + (this.spouseId ? 1 : 0) + this.childrenIds.length;
-  }
-  
-  /**
-   * Add a child to the family
-   * @param {string} childId - ID of the child to add
-   * @returns {boolean} Whether the operation was successful
-   */
-  addChild(childId) {
-    if (!childId || this.childrenIds.includes(childId)) {
-      return false;
-    }
-    
-    this.childrenIds.push(childId);
-    this.updatedAt = Date.now();
-    return true;
-  }
-  
-  /**
-   * Remove a child from the family
-   * @param {string} childId - ID of the child to remove
-   * @returns {boolean} Whether the operation was successful
-   */
-  removeChild(childId) {
-    const index = this.childrenIds.indexOf(childId);
-    if (index === -1) {
-      return false;
-    }
-    
-    this.childrenIds.splice(index, 1);
-    this.updatedAt = Date.now();
-    return true;
-  }
-  
-  /**
-   * Check if a person is a member of this family
-   * @param {string} personId - ID of the person to check
-   * @returns {boolean} Whether the person is a member
-   */
-  isMember(personId) {
-    return (
-      this.headId === personId || 
-      this.spouseId === personId || 
-      this.childrenIds.includes(personId)
-    );
-  }
-  
-  /**
-   * Get a person's role in the family
-   * @param {string} personId - ID of the person to check
-   * @returns {string|null} The person's role ('head', 'spouse', 'child') or null
-   */
-  getMemberRole(personId) {
-    if (this.headId === personId) {
-      return 'head';
-    } else if (this.spouseId === personId) {
-      return 'spouse';
-    } else if (this.childrenIds.includes(personId)) {
-      return 'child';
-    }
-    
-    return null;
-  }
-  
-  /**
-   * Calculate the geographical center of the family
-   * @returns {Object|null} Center position with lat and lng properties
-   */
-  calculateCenter() {
-    // Combine head, spouse, and children
-    const allMembers = [];
-    
-    if (this._head) {
-      allMembers.push(this._head);
-    }
-    
-    if (this._spouse) {
-      allMembers.push(this._spouse);
-    }
-    
-    if (this._children.length > 0) {
-      allMembers.push(...this._children);
-    }
-    
-    if (allMembers.length === 0) {
-      return null;
-    }
-    
-    // Sum up all coordinates
-    const sum = allMembers.reduce(
-      (acc, member) => {
-        acc.lat += member.lat;
-        acc.lng += member.lng;
-        return acc;
-      },
-      { lat: 0, lng: 0 }
-    );
-    
-    // Calculate the average
-    return {
-      lat: sum.lat / allMembers.length,
-      lng: sum.lng / allMembers.length
-    };
-  }
-  
-  /**
-   * Get family statistics
-   * @returns {Object} Family statistics
-   */
-  getStatistics() {
-    // Count roles in the family
-    const allMembers = [];
-    
-    if (this._head) {
-      allMembers.push(this._head);
-    }
-    
-    if (this._spouse) {
-      allMembers.push(this._spouse);
-    }
-    
-    if (this._children.length > 0) {
-      allMembers.push(...this._children);
-    }
-    
-    // Count roles
-    const elderCount = allMembers.filter(p => p.elder).length;
-    const servantCount = allMembers.filter(p => p.servant).length;
-    const pioneerCount = allMembers.filter(p => p.pioneer).length;
-    const leaderCount = allMembers.filter(p => p.leader).length;
-    const helperCount = allMembers.filter(p => p.helper).length;
-    const publisherCount = allMembers.filter(p => p.publisher).length;
-    
-    return {
-      totalMembers: allMembers.length,
-      adults: (this._head ? 1 : 0) + (this._spouse ? 1 : 0),
-      children: this._children.length,
-      elders: elderCount,
-      servants: servantCount,
-      pioneers: pioneerCount,
-      leaders: leaderCount,
-      helpers: helperCount,
-      publishers: publisherCount
-    };
   }
 }
 
