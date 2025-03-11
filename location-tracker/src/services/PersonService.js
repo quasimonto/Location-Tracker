@@ -1,81 +1,104 @@
 /**
  * PersonService.js
- * Service for managing people in the Location Tracker application
+ * Service for managing Person entities in the Location Tracker application
  */
 
-import { stateManager } from './StateManager';
 import Person from '../models/Person';
+import { stateManager } from './StateManager';
 import { errorHandler, ErrorType, ErrorSeverity } from '../utils/errorHandler';
+import { EventBus, Events } from '../app/EventBus';
 
 /**
  * Service for managing people
  */
 class PersonService {
   constructor() {
-    // Subscribe to changes in the persons state
-    this.unsubscribe = stateManager.subscribe('persons', (persons) => {
-      this.handlePersonsUpdate(persons);
-    });
+    // Initialize state tracking
+    this.initializeState();
     
-    // Local cache of person markers
-    this.personMarkers = new Map();
+    // Subscribe to relevant state changes
+    stateManager.subscribe('persons', this.handleStateUpdate.bind(this));
   }
   
   /**
-   * Handle updates to the persons state
-   * @param {Array} persons - Updated persons array
-   * @private
+   * Initialize state tracking
    */
-  handlePersonsUpdate(persons) {
-    // This hook can be used to react to person data changes
-    // For example, we might want to update UI or sync with server
+  initializeState() {
+    // Cache of all persons for quick access
+    this.personsCache = new Map();
+    
+    // Load initial persons from state
+    const personsData = stateManager.getState('persons') || [];
+    personsData.forEach(personData => {
+      const person = Person.fromJSON(personData);
+      this.personsCache.set(person.id, person);
+    });
+  }
+  
+  /**
+   * Handle state updates
+   * @param {Array} personsData - Updated persons data
+   */
+  handleStateUpdate(personsData) {
+    // Clear and rebuild cache when state changes externally
+    this.personsCache.clear();
+    
+    // Update cache with new data
+    personsData.forEach(personData => {
+      const person = Person.fromJSON(personData);
+      this.personsCache.set(person.id, person);
+    });
+    
+    // Notify that persons have been updated
+    EventBus.publish(Events.PERSONS_UPDATED, Array.from(this.personsCache.values()));
   }
   
   /**
    * Get all persons
-   * @returns {Array} Array of Person objects
+   * @returns {Array<Person>} All persons
    */
   getAllPersons() {
-    const personsData = stateManager.getState('persons') || [];
-    return personsData.map(data => new Person(data));
+    return Array.from(this.personsCache.values());
   }
   
   /**
    * Get a person by ID
    * @param {string} id - Person ID
-   * @returns {Person|null} Person object or null if not found
+   * @returns {Person|null} Person or null if not found
    */
   getPersonById(id) {
-    if (!id) return null;
-    
-    const personsData = stateManager.getState('persons') || [];
-    const personData = personsData.find(p => p.id === id);
-    
-    return personData ? new Person(personData) : null;
+    return this.personsCache.get(id) || null;
   }
   
   /**
    * Create a new person
-   * @param {Object} data - Person data
-   * @returns {Person} Newly created Person object
+   * @param {Object} personData - Person data
+   * @returns {Person} Created person
    */
-  createPerson(data) {
+  createPerson(personData) {
     try {
-      const newPerson = new Person(data);
+      // Create new person instance
+      const person = new Person(personData);
       
-      if (!newPerson.validate()) {
-        throw new Error('Invalid person data');
+      // Validate the person
+      if (!person.validate()) {
+        throw new Error('Person validation failed');
       }
       
-      const personsData = stateManager.getState('persons') || [];
-      personsData.push(newPerson.toJSON());
-      stateManager.setState('persons', personsData);
+      // Add to cache
+      this.personsCache.set(person.id, person);
       
-      return newPerson;
+      // Update state
+      this.updateState();
+      
+      // Notify that a person was created
+      EventBus.publish(Events.PERSON_CREATED, person);
+      
+      return person;
     } catch (error) {
       errorHandler.handleError(
         error,
-        'Person Creation',
+        'Creating Person',
         ErrorSeverity.ERROR,
         ErrorType.VALIDATION
       );
@@ -86,39 +109,45 @@ class PersonService {
   /**
    * Update an existing person
    * @param {string} id - Person ID
-   * @param {Object} data - Updated person data
-   * @returns {Person|null} Updated Person object or null if not found
+   * @param {Object} updates - Person data updates
+   * @returns {Person|null} Updated person or null if not found
    */
-  updatePerson(id, data) {
+  updatePerson(id, updates) {
     try {
-      if (!id) throw new Error('Person ID is required');
-      
-      const personsData = stateManager.getState('persons') || [];
-      const personIndex = personsData.findIndex(p => p.id === id);
-      
-      if (personIndex === -1) {
+      // Find existing person
+      const existingPerson = this.personsCache.get(id);
+      if (!existingPerson) {
         throw new Error(`Person with ID ${id} not found`);
       }
       
-      // Merge existing data with new data
-      const existingData = personsData[personIndex];
-      const updatedData = { ...existingData, ...data, id };
+      // Create updated person with current data plus updates
+      const updatedPersonData = {
+        ...existingPerson.toJSON(),
+        ...updates,
+        id // Ensure ID stays the same
+      };
       
-      // Create and validate the updated person
-      const updatedPerson = new Person(updatedData);
+      const updatedPerson = new Person(updatedPersonData);
+      
+      // Validate the updated person
       if (!updatedPerson.validate()) {
-        throw new Error('Invalid person data');
+        throw new Error('Updated person validation failed');
       }
       
-      // Update in state
-      personsData[personIndex] = updatedPerson.toJSON();
-      stateManager.setState('persons', personsData);
+      // Update in cache
+      this.personsCache.set(id, updatedPerson);
+      
+      // Update state
+      this.updateState();
+      
+      // Notify that a person was updated
+      EventBus.publish(Events.PERSON_UPDATED, updatedPerson);
       
       return updatedPerson;
     } catch (error) {
       errorHandler.handleError(
         error,
-        'Person Update',
+        'Updating Person',
         ErrorSeverity.ERROR,
         ErrorType.VALIDATION
       );
@@ -129,28 +158,30 @@ class PersonService {
   /**
    * Delete a person
    * @param {string} id - Person ID
-   * @returns {boolean} Success status
+   * @returns {boolean} Whether the person was deleted
    */
   deletePerson(id) {
     try {
-      if (!id) throw new Error('Person ID is required');
-      
-      const personsData = stateManager.getState('persons') || [];
-      const personIndex = personsData.findIndex(p => p.id === id);
-      
-      if (personIndex === -1) {
+      // Find existing person
+      const existingPerson = this.personsCache.get(id);
+      if (!existingPerson) {
         throw new Error(`Person with ID ${id} not found`);
       }
       
-      // Remove from state
-      personsData.splice(personIndex, 1);
-      stateManager.setState('persons', personsData);
+      // Remove from cache
+      this.personsCache.delete(id);
+      
+      // Update state
+      this.updateState();
+      
+      // Notify that a person was deleted
+      EventBus.publish(Events.PERSON_DELETED, id);
       
       return true;
     } catch (error) {
       errorHandler.handleError(
         error,
-        'Person Deletion',
+        'Deleting Person',
         ErrorSeverity.ERROR,
         ErrorType.UNKNOWN
       );
@@ -159,145 +190,189 @@ class PersonService {
   }
   
   /**
-   * Filter persons by various criteria
+   * Update the application state with current cache
+   */
+  updateState() {
+    // Convert cache to array of serialized persons
+    const personsData = Array.from(this.personsCache.values()).map(person => person.toJSON());
+    
+    // Update state
+    stateManager.setState('persons', personsData);
+  }
+  
+  /**
+   * Filter persons by criteria
    * @param {Object} filters - Filter criteria
-   * @returns {Array} Filtered array of Person objects
+   * @returns {Array<Person>} Filtered persons
    */
   filterPersons(filters = {}) {
-    const persons = this.getAllPersons();
+    let filtered = Array.from(this.personsCache.values());
     
-    return persons.filter(person => {
-      // Filter by name
-      if (filters.name && !person.name.toLowerCase().includes(filters.name.toLowerCase())) {
-        return false;
-      }
+    // Filter by name
+    if (filters.name) {
+      const nameFilter = filters.name.toLowerCase();
+      filtered = filtered.filter(person => 
+        person.name.toLowerCase().includes(nameFilter)
+      );
+    }
+    
+    // Filter by roles
+    if (filters.roles && Object.values(filters.roles).some(value => value)) {
+      filtered = filtered.filter(person => {
+        return Object.entries(filters.roles).some(([role, value]) => {
+          return value && person.hasRole(role);
+        });
+      });
+    }
+    
+    // Filter by group
+    if (filters.groupId) {
+      filtered = filtered.filter(person => person.group === filters.groupId);
+    }
+    
+    // Filter by family
+    if (filters.familyId) {
+      filtered = filtered.filter(person => person.familyId === filters.familyId);
+    }
+    
+    // Filter by position
+    if (filters.position && filters.radius) {
+      const { lat, lng } = filters.position;
+      const radiusInKm = filters.radius;
       
-      // Filter by roles
-      if (filters.roles && Object.keys(filters.roles).length > 0) {
-        const hasMatchingRole = Object.entries(filters.roles).some(
-          ([role, value]) => value && person.hasRole(role)
+      filtered = filtered.filter(person => {
+        // Calculate distance using Haversine formula
+        const distance = this.calculateDistance(
+          lat, lng, 
+          person.lat, person.lng
         );
         
-        if (!hasMatchingRole) return false;
-      }
+        return distance <= radiusInKm;
+      });
+    }
+    
+    return filtered;
+  }
+  
+  /**
+   * Calculate distance between two points using Haversine formula
+   * @param {number} lat1 - Latitude of first point
+   * @param {number} lng1 - Longitude of first point
+   * @param {number} lat2 - Latitude of second point
+   * @param {number} lng2 - Longitude of second point
+   * @returns {number} Distance in kilometers
+   */
+  calculateDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371; // Earth's radius in km
+    const dLat = this.deg2rad(lat2 - lat1);
+    const dLng = this.deg2rad(lng2 - lng1);
+    
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) * 
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // Distance in km
+    
+    return distance;
+  }
+  
+  /**
+   * Convert degrees to radians
+   * @param {number} deg - Degrees
+   * @returns {number} Radians
+   */
+  deg2rad(deg) {
+    return deg * (Math.PI / 180);
+  }
+  
+  /**
+   * Get persons by group
+   * @param {string} groupId - Group ID
+   * @returns {Array<Person>} Persons in the group
+   */
+  getPersonsByGroup(groupId) {
+    return Array.from(this.personsCache.values())
+      .filter(person => person.group === groupId);
+  }
+  
+  /**
+   * Get persons by family
+   * @param {string} familyId - Family ID
+   * @returns {Array<Person>} Persons in the family
+   */
+  getPersonsByFamily(familyId) {
+    return Array.from(this.personsCache.values())
+      .filter(person => person.familyId === familyId);
+  }
+  
+  /**
+   * Assign person to a group
+   * @param {string} personId - Person ID
+   * @param {string} groupId - Group ID
+   * @returns {Person|null} Updated person or null if not found
+   */
+  assignPersonToGroup(personId, groupId) {
+    return this.updatePerson(personId, { group: groupId });
+  }
+  
+  /**
+   * Remove person from their group
+   * @param {string} personId - Person ID
+   * @returns {Person|null} Updated person or null if not found
+   */
+  removePersonFromGroup(personId) {
+    return this.updatePerson(personId, { group: null });
+  }
+  
+  /**
+   * Assign person to a family
+   * @param {string} personId - Person ID
+   * @param {string} familyId - Family ID
+   * @param {string} role - Role in the family ('head', 'spouse', 'child')
+   * @returns {Person|null} Updated person or null if not found
+   */
+  assignPersonToFamily(personId, familyId, role) {
+    return this.updatePerson(personId, { 
+      familyId, 
+      familyRole: role,
       
-      // Filter by group
-      if (filters.groupId && person.group !== filters.groupId) {
-        return false;
-      }
-      
-      // Filter by family
-      if (filters.familyId && person.familyId !== filters.familyId) {
-        return false;
-      }
-      
-      return true;
+      // Set role flags based on family role
+      familyHead: role === 'head',
+      spouse: role === 'spouse',
+      child: role === 'child'
     });
   }
   
   /**
-   * Get all persons in a specific group
-   * @param {string} groupId - Group ID
-   * @returns {Array} Array of Person objects in the group
-   */
-  getPersonsByGroup(groupId) {
-    if (!groupId) return [];
-    
-    return this.getAllPersons().filter(person => person.group === groupId);
-  }
-  
-  /**
-   * Get all persons in a specific family
-   * @param {string} familyId - Family ID
-   * @returns {Array} Array of Person objects in the family
-   */
-  getPersonsByFamily(familyId) {
-    if (!familyId) return [];
-    
-    return this.getAllPersons().filter(person => person.familyId === familyId);
-  }
-  
-  /**
-   * Get all persons with a specific role
-   * @param {string} role - Role name ('elder', 'servant', etc.)
-   * @returns {Array} Array of Person objects with the role
-   */
-  getPersonsByRole(role) {
-    if (!role) return [];
-    
-    return this.getAllPersons().filter(person => person.hasRole(role));
-  }
-  
-  /**
-   * Assign a person to a group
+   * Remove person from their family
    * @param {string} personId - Person ID
-   * @param {string} groupId - Group ID (or null to remove from group)
-   * @returns {boolean} Success status
+   * @returns {Person|null} Updated person or null if not found
    */
-  assignPersonToGroup(personId, groupId) {
-    try {
-      if (!personId) throw new Error('Person ID is required');
-      
-      const personsData = stateManager.getState('persons') || [];
-      const personIndex = personsData.findIndex(p => p.id === personId);
-      
-      if (personIndex === -1) {
-        throw new Error(`Person with ID ${personId} not found`);
-      }
-      
-      // Update group assignment
-      personsData[personIndex].group = groupId;
-      stateManager.setState('persons', personsData);
-      
-      return true;
-    } catch (error) {
-      errorHandler.handleError(
-        error,
-        'Person Group Assignment',
-        ErrorSeverity.ERROR,
-        ErrorType.UNKNOWN
-      );
-      throw error;
-    }
+  removePersonFromFamily(personId) {
+    return this.updatePerson(personId, { 
+      familyId: null, 
+      familyRole: null,
+      familyHead: false,
+      spouse: false,
+      child: false,
+      relationshipIds: []
+    });
   }
   
   /**
-   * Add or update the marker for a person
+   * Update person's position
    * @param {string} personId - Person ID
-   * @param {Object} marker - Google Maps marker object
-   * @returns {boolean} Success status
+   * @param {number} lat - Latitude
+   * @param {number} lng - Longitude
+   * @returns {Person|null} Updated person or null if not found
    */
-  setPersonMarker(personId, marker) {
-    if (!personId || !marker) return false;
-    
-    this.personMarkers.set(personId, marker);
-    return true;
-  }
-  
-  /**
-   * Get the marker for a person
-   * @param {string} personId - Person ID
-   * @returns {Object|null} Google Maps marker object or null if not found
-   */
-  getPersonMarker(personId) {
-    if (!personId) return null;
-    
-    return this.personMarkers.get(personId) || null;
-  }
-  
-  /**
-   * Clean up resources used by the service
-   */
-  dispose() {
-    if (this.unsubscribe) {
-      this.unsubscribe();
-      this.unsubscribe = null;
-    }
-    
-    this.personMarkers.clear();
+  updatePersonPosition(personId, lat, lng) {
+    return this.updatePerson(personId, { lat, lng });
   }
 }
 
-// Export singleton instance
+// Export a singleton instance
 export const personService = new PersonService();
 export default personService;

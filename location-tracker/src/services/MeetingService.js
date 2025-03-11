@@ -1,151 +1,98 @@
 /**
  * MeetingService.js
- * Service for managing meeting points
+ * Service for managing Meeting entities in the Location Tracker application
  */
 
+import Meeting from '../models/Meeting';
 import { stateManager } from './StateManager';
 import { errorHandler, ErrorType, ErrorSeverity } from '../utils/errorHandler';
-import { eventBus } from '../app/EventBus';
-import Meeting from '../models/Meeting';
-import { getMeetingMarkerIcon } from '../utils/mapUtils';
-import { getMap, addMarker, removeMarker } from './MapService';
+import { EventBus, Events } from '../app/EventBus';
 
 /**
  * Service for managing meeting points
  */
 class MeetingService {
   constructor() {
-    // Initialize meetings if they exist in state
-    this.loadMeetings();
+    // Initialize state tracking
+    this.initializeState();
     
-    // Subscribe to relevant events
-    this.setupEventSubscriptions();
+    // Subscribe to relevant state changes
+    stateManager.subscribe('meetingPoints', this.handleStateUpdate.bind(this));
   }
   
   /**
-   * Load meetings from state manager
+   * Initialize state tracking
    */
-  loadMeetings() {
-    const meetingData = stateManager.getState('meetingPoints') || [];
+  initializeState() {
+    // Cache of all meeting points for quick access
+    this.meetingsCache = new Map();
     
-    // Convert plain objects to Meeting instances
-    const meetings = meetingData.map(data => Meeting.fromJSON(data));
-    
-    // Store meetings locally
-    this.meetings = meetings;
-    
-    // Create markers for meetings
-    this.createMeetingMarkers();
+    // Load initial meeting points from state
+    const meetingsData = stateManager.getState('meetingPoints') || [];
+    meetingsData.forEach(meetingData => {
+      const meeting = Meeting.fromJSON(meetingData);
+      this.meetingsCache.set(meeting.id, meeting);
+    });
   }
   
   /**
-   * Set up event subscriptions
+   * Handle state updates
+   * @param {Array} meetingsData - Updated meetings data
    */
-  setupEventSubscriptions() {
-    // Listen for map ready event to create markers
-    eventBus.on(eventBus.EVENT_TYPES.MAP_READY, () => {
-      this.createMeetingMarkers();
+  handleStateUpdate(meetingsData) {
+    // Clear and rebuild cache when state changes externally
+    this.meetingsCache.clear();
+    
+    // Update cache with new data
+    meetingsData.forEach(meetingData => {
+      const meeting = Meeting.fromJSON(meetingData);
+      this.meetingsCache.set(meeting.id, meeting);
     });
     
-    // Listen for meeting creation events from the map
-    eventBus.on(eventBus.EVENT_TYPES.MEETING_CREATED, (data) => {
-      this.createMeeting({
-        name: data.meeting.name,
-        description: data.meeting.description,
-        lat: data.location.lat,
-        lng: data.location.lng
-      }, data.marker);
-    });
+    // Notify that meetings have been updated
+    EventBus.publish(Events.MEETINGS_UPDATED, Array.from(this.meetingsCache.values()));
   }
   
   /**
-   * Create markers for all meetings
+   * Get all meeting points
+   * @returns {Array<Meeting>} All meeting points
    */
-  createMeetingMarkers() {
-    const map = getMap();
-    if (!map || !this.meetings || this.meetings.length === 0) {
-      return;
-    }
-    
-    this.meetings.forEach(meeting => {
-      // Only create marker if it doesn't exist
-      if (!meeting.marker) {
-        const marker = addMarker({
-          position: meeting.getPosition(),
-          draggable: true,
-          icon: getMeetingMarkerIcon(meeting)
-        });
-        
-        // Store marker reference in meeting
-        meeting.marker = marker;
-        
-        // Add event listeners
-        this.setupMarkerEventListeners(meeting);
-      }
-    });
+  getAllMeetings() {
+    return Array.from(this.meetingsCache.values());
   }
   
   /**
-   * Set up event listeners for meeting markers
-   * @param {Meeting} meeting - Meeting to set up listeners for
+   * Get a meeting point by ID
+   * @param {string} id - Meeting ID
+   * @returns {Meeting|null} Meeting or null if not found
    */
-  setupMarkerEventListeners(meeting) {
-    if (!meeting.marker) return;
-    
-    // Click listener
-    meeting.marker.addListener('click', () => {
-      this.selectMeeting(meeting.id);
-      eventBus.emit(eventBus.EVENT_TYPES.MEETING_SELECTED, { meeting });
-    });
-    
-    // Drag end listener to update position
-    meeting.marker.addListener('dragend', () => {
-      const position = meeting.marker.getPosition();
-      meeting.setPosition(position.lat(), position.lng());
-      this.updateMeeting(meeting);
-    });
+  getMeetingById(id) {
+    return this.meetingsCache.get(id) || null;
   }
   
   /**
-   * Create a new meeting
+   * Create a new meeting point
    * @param {Object} meetingData - Meeting data
-   * @param {Object} [existingMarker] - Optional existing marker
-   * @returns {Meeting} The created meeting
+   * @returns {Meeting} Created meeting
    */
-  createMeeting(meetingData, existingMarker = null) {
+  createMeeting(meetingData) {
     try {
-      // Create a new meeting instance
+      // Create new meeting instance
       const meeting = new Meeting(meetingData);
       
       // Validate the meeting
       if (!meeting.validate()) {
-        throw new Error('Invalid meeting data');
+        throw new Error('Meeting validation failed');
       }
       
-      // Use existing marker or create a new one
-      if (existingMarker) {
-        meeting.marker = existingMarker;
-      } else {
-        const marker = addMarker({
-          position: meeting.getPosition(),
-          draggable: true,
-          icon: getMeetingMarkerIcon(meeting)
-        });
-        
-        meeting.marker = marker;
-      }
+      // Add to cache
+      this.meetingsCache.set(meeting.id, meeting);
       
-      // Setup marker event listeners
-      this.setupMarkerEventListeners(meeting);
+      // Update state
+      this.updateState();
       
-      // Add to local collection
-      this.meetings.push(meeting);
-      
-      // Save to state
-      this.saveMeetings();
-      
-      // Emit event
-      eventBus.emit(eventBus.EVENT_TYPES.MEETING_CREATED, { meeting });
+      // Notify that a meeting was created
+      EventBus.publish(Events.MEETING_CREATED, meeting);
       
       return meeting;
     } catch (error) {
@@ -155,85 +102,48 @@ class MeetingService {
         ErrorSeverity.ERROR,
         ErrorType.VALIDATION
       );
-      return null;
+      throw error;
     }
   }
   
   /**
-   * Get a meeting by ID
+   * Update an existing meeting
    * @param {string} id - Meeting ID
-   * @returns {Meeting|null} The meeting or null if not found
+   * @param {Object} updates - Meeting data updates
+   * @returns {Meeting|null} Updated meeting or null if not found
    */
-  getMeeting(id) {
-    return this.meetings.find(meeting => meeting.id === id) || null;
-  }
-  
-  /**
-   * Get all meetings
-   * @returns {Array} Array of meetings
-   */
-  getAllMeetings() {
-    return [...this.meetings];
-  }
-  
-  /**
-   * Update a meeting
-   * @param {Meeting|Object} meetingData - Meeting or meeting data with ID
-   * @returns {Meeting|null} The updated meeting or null if not found
-   */
-  updateMeeting(meetingData) {
+  updateMeeting(id, updates) {
     try {
-      // If the input is already a Meeting instance
-      if (meetingData instanceof Meeting) {
-        const index = this.meetings.findIndex(m => m.id === meetingData.id);
-        if (index === -1) {
-          throw new Error(`Meeting with ID ${meetingData.id} not found`);
-        }
-        
-        // Update the meeting in the collection
-        this.meetings[index] = meetingData;
-        
-        // Update the marker
-        if (meetingData.marker) {
-          meetingData.marker.setPosition(meetingData.getPosition());
-          meetingData.marker.setIcon(getMeetingMarkerIcon(meetingData));
-        }
-        
-        // Save to state
-        this.saveMeetings();
-        
-        // Emit event
-        eventBus.emit(eventBus.EVENT_TYPES.MEETING_UPDATED, { meeting: meetingData });
-        
-        return meetingData;
+      // Find existing meeting
+      const existingMeeting = this.meetingsCache.get(id);
+      if (!existingMeeting) {
+        throw new Error(`Meeting with ID ${id} not found`);
       }
       
-      // If the input is a plain object with an ID
-      if (meetingData && meetingData.id) {
-        const meeting = this.getMeeting(meetingData.id);
-        if (!meeting) {
-          throw new Error(`Meeting with ID ${meetingData.id} not found`);
-        }
-        
-        // Update the meeting
-        meeting.update(meetingData);
-        
-        // Update the marker
-        if (meeting.marker) {
-          meeting.marker.setPosition(meeting.getPosition());
-          meeting.marker.setIcon(getMeetingMarkerIcon(meeting));
-        }
-        
-        // Save to state
-        this.saveMeetings();
-        
-        // Emit event
-        eventBus.emit(eventBus.EVENT_TYPES.MEETING_UPDATED, { meeting });
-        
-        return meeting;
+      // Create updated meeting with current data plus updates
+      const updatedMeetingData = {
+        ...existingMeeting.toJSON(),
+        ...updates,
+        id // Ensure ID stays the same
+      };
+      
+      const updatedMeeting = new Meeting(updatedMeetingData);
+      
+      // Validate the updated meeting
+      if (!updatedMeeting.validate()) {
+        throw new Error('Updated meeting validation failed');
       }
       
-      throw new Error('Invalid meeting data for update');
+      // Update in cache
+      this.meetingsCache.set(id, updatedMeeting);
+      
+      // Update state
+      this.updateState();
+      
+      // Notify that a meeting was updated
+      EventBus.publish(Events.MEETING_UPDATED, updatedMeeting);
+      
+      return updatedMeeting;
     } catch (error) {
       errorHandler.handleError(
         error,
@@ -241,38 +151,31 @@ class MeetingService {
         ErrorSeverity.ERROR,
         ErrorType.VALIDATION
       );
-      return null;
+      throw error;
     }
   }
   
   /**
    * Delete a meeting
    * @param {string} id - Meeting ID
-   * @returns {boolean} Whether the deletion was successful
+   * @returns {boolean} Whether the meeting was deleted
    */
   deleteMeeting(id) {
     try {
-      const index = this.meetings.findIndex(meeting => meeting.id === id);
-      if (index === -1) {
+      // Find existing meeting
+      const existingMeeting = this.meetingsCache.get(id);
+      if (!existingMeeting) {
         throw new Error(`Meeting with ID ${id} not found`);
       }
       
-      // Get the meeting for event emission
-      const meeting = this.meetings[index];
+      // Remove from cache
+      this.meetingsCache.delete(id);
       
-      // Remove the marker
-      if (meeting.marker) {
-        removeMarker(meeting.marker);
-      }
+      // Update state
+      this.updateState();
       
-      // Remove from the collection
-      this.meetings.splice(index, 1);
-      
-      // Save to state
-      this.saveMeetings();
-      
-      // Emit event
-      eventBus.emit(eventBus.EVENT_TYPES.MEETING_DELETED, { meetingId: id });
+      // Notify that a meeting was deleted
+      EventBus.publish(Events.MEETING_DELETED, id);
       
       return true;
     } catch (error) {
@@ -282,161 +185,193 @@ class MeetingService {
         ErrorSeverity.ERROR,
         ErrorType.UNKNOWN
       );
-      return false;
+      throw error;
     }
   }
   
   /**
-   * Select a meeting
-   * @param {string} id - Meeting ID
-   * @returns {Meeting|null} The selected meeting or null if not found
+   * Update the application state with current cache
    */
-  selectMeeting(id) {
-    // Deselect all meetings
-    this.meetings.forEach(meeting => {
-      meeting.selected = false;
-    });
+  updateState() {
+    // Convert cache to array of serialized meetings
+    const meetingsData = Array.from(this.meetingsCache.values()).map(meeting => meeting.toJSON());
     
-    // Find and select the specified meeting
-    const meeting = this.getMeeting(id);
-    if (meeting) {
-      meeting.selected = true;
-      return meeting;
-    }
-    
-    return null;
+    // Update state
+    stateManager.setState('meetingPoints', meetingsData);
   }
   
   /**
-   * Filter meetings based on criteria
-   * @param {Object} criteria - Filter criteria
-   * @returns {Array} Filtered meetings
+   * Filter meetings by criteria
+   * @param {Object} filters - Filter criteria
+   * @returns {Array<Meeting>} Filtered meetings
    */
-  filterMeetings(criteria = {}) {
-    let filteredMeetings = [...this.meetings];
+  filterMeetings(filters = {}) {
+    let filtered = Array.from(this.meetingsCache.values());
     
     // Filter by name
-    if (criteria.name) {
-      const nameFilter = criteria.name.toLowerCase();
-      filteredMeetings = filteredMeetings.filter(meeting => 
+    if (filters.name) {
+      const nameFilter = filters.name.toLowerCase();
+      filtered = filtered.filter(meeting => 
         meeting.name.toLowerCase().includes(nameFilter)
       );
     }
     
+    // Filter by description
+    if (filters.description) {
+      const descriptionFilter = filters.description.toLowerCase();
+      filtered = filtered.filter(meeting => 
+        meeting.description.toLowerCase().includes(descriptionFilter)
+      );
+    }
+    
     // Filter by group
-    if (criteria.group) {
-      filteredMeetings = filteredMeetings.filter(meeting => 
-        meeting.group === criteria.group
-      );
+    if (filters.groupId) {
+      filtered = filtered.filter(meeting => meeting.group === filters.groupId);
     }
     
-    // Filter by visibility
-    if (criteria.visible !== undefined) {
-      filteredMeetings = filteredMeetings.filter(meeting => 
-        meeting.visible === criteria.visible
-      );
+    // Filter by position
+    if (filters.position && filters.radius) {
+      const { lat, lng } = filters.position;
+      const radiusInKm = filters.radius;
+      
+      filtered = filtered.filter(meeting => {
+        // Calculate distance using Haversine formula
+        const distance = this.calculateDistance(
+          lat, lng, 
+          meeting.lat, meeting.lng
+        );
+        
+        return distance <= radiusInKm;
+      });
     }
     
-    return filteredMeetings;
+    return filtered;
   }
   
   /**
-   * Assign a meeting to a group
+   * Calculate distance between two points using Haversine formula
+   * @param {number} lat1 - Latitude of first point
+   * @param {number} lng1 - Longitude of first point
+   * @param {number} lat2 - Latitude of second point
+   * @param {number} lng2 - Longitude of second point
+   * @returns {number} Distance in kilometers
+   */
+  calculateDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371; // Earth's radius in km
+    const dLat = this.deg2rad(lat2 - lat1);
+    const dLng = this.deg2rad(lng2 - lng1);
+    
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) * 
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // Distance in km
+    
+    return distance;
+  }
+  
+  /**
+   * Convert degrees to radians
+   * @param {number} deg - Degrees
+   * @returns {number} Radians
+   */
+  deg2rad(deg) {
+    return deg * (Math.PI / 180);
+  }
+  
+  /**
+   * Get meetings by group
+   * @param {string} groupId - Group ID
+   * @returns {Array<Meeting>} Meetings in the group
+   */
+  getMeetingsByGroup(groupId) {
+    return Array.from(this.meetingsCache.values())
+      .filter(meeting => meeting.group === groupId);
+  }
+  
+  /**
+   * Assign meeting to a group
    * @param {string} meetingId - Meeting ID
    * @param {string} groupId - Group ID
-   * @returns {Meeting|null} The updated meeting or null if not found
+   * @returns {Meeting|null} Updated meeting or null if not found
    */
-  assignToGroup(meetingId, groupId) {
-    const meeting = this.getMeeting(meetingId);
-    if (!meeting) {
-      return null;
-    }
-    
-    // Update the meeting
-    meeting.group = groupId;
-    
-    // Update the marker
-    if (meeting.marker) {
-      meeting.marker.setIcon(getMeetingMarkerIcon(meeting));
-    }
-    
-    // Save to state
-    this.saveMeetings();
-    
-    // Emit event
-    eventBus.emit(eventBus.EVENT_TYPES.MEETING_UPDATED, { meeting });
-    
-    return meeting;
+  assignMeetingToGroup(meetingId, groupId) {
+    return this.updateMeeting(meetingId, { group: groupId });
   }
   
   /**
-   * Save meetings to state manager
+   * Remove meeting from its group
+   * @param {string} meetingId - Meeting ID
+   * @returns {Meeting|null} Updated meeting or null if not found
    */
-  saveMeetings() {
-    // Convert all meetings to plain objects
-    const meetingData = this.meetings.map(meeting => meeting.toJSON());
-    
-    // Save to state manager
-    stateManager.setState('meetingPoints', meetingData);
+  removeMeetingFromGroup(meetingId) {
+    return this.updateMeeting(meetingId, { group: null });
   }
   
   /**
-   * Set the visibility of all meetings
-   * @param {boolean} visible - Whether the meetings should be visible
+   * Update meeting's position
+   * @param {string} meetingId - Meeting ID
+   * @param {number} lat - Latitude
+   * @param {number} lng - Longitude
+   * @returns {Meeting|null} Updated meeting or null if not found
    */
-  setAllVisibility(visible) {
-    this.meetings.forEach(meeting => {
-      meeting.visible = visible;
-    });
-    
-    // Emit an event about the visibility change
-    eventBus.emit(eventBus.EVENT_TYPES.UI_FILTER_CHANGED, { 
-      type: 'meetings', 
-      visible 
-    });
+  updateMeetingPosition(meetingId, lat, lng) {
+    return this.updateMeeting(meetingId, { lat, lng });
   }
   
   /**
-   * Find meetings near a location
-   * @param {Object} location - Location with lat and lng properties
-   * @param {number} radius - Search radius in meters
-   * @returns {Array} Meetings within the radius
+   * Find nearest meeting to a position
+   * @param {number} lat - Latitude
+   * @param {number} lng - Longitude
+   * @returns {Object} Nearest meeting and distance in km
    */
-  findMeetingsNearLocation(location, radius) {
-    return this.meetings.filter(meeting => {
-      const distance = meeting.distanceTo(location);
-      return distance <= radius;
-    });
-  }
-  
-  /**
-   * Find the nearest meeting to a location
-   * @param {Object} location - Location with lat and lng properties
-   * @returns {Object} Nearest meeting and distance
-   */
-  findNearestMeeting(location) {
-    if (this.meetings.length === 0) {
+  findNearestMeeting(lat, lng) {
+    const meetings = Array.from(this.meetingsCache.values());
+    if (meetings.length === 0) {
       return { meeting: null, distance: Infinity };
     }
     
     let nearestMeeting = null;
-    let shortestDistance = Infinity;
+    let minDistance = Infinity;
     
-    this.meetings.forEach(meeting => {
-      const distance = meeting.distanceTo(location);
-      if (distance < shortestDistance) {
-        shortestDistance = distance;
+    meetings.forEach(meeting => {
+      const distance = this.calculateDistance(lat, lng, meeting.lat, meeting.lng);
+      if (distance < minDistance) {
+        minDistance = distance;
         nearestMeeting = meeting;
       }
     });
     
-    return {
-      meeting: nearestMeeting,
-      distance: shortestDistance
+    return { 
+      meeting: nearestMeeting, 
+      distance: minDistance 
     };
+  }
+  
+  /**
+   * Get meetings sorted by distance from a position
+   * @param {number} lat - Latitude
+   * @param {number} lng - Longitude
+   * @returns {Array<Object>} Meetings with distances, sorted by proximity
+   */
+  getMeetingsSortedByDistance(lat, lng) {
+    const meetings = Array.from(this.meetingsCache.values());
+    
+    // Calculate distances
+    const meetingsWithDistances = meetings.map(meeting => {
+      const distance = this.calculateDistance(lat, lng, meeting.lat, meeting.lng);
+      return { meeting, distance };
+    });
+    
+    // Sort by distance (ascending)
+    meetingsWithDistances.sort((a, b) => a.distance - b.distance);
+    
+    return meetingsWithDistances;
   }
 }
 
-// Export singleton instance
+// Export a singleton instance
 export const meetingService = new MeetingService();
 export default meetingService;

@@ -6,7 +6,57 @@
 import { errorHandler, ErrorType, ErrorSeverity } from '../utils/errorHandler';
 
 /**
- * Configuration class for application settings
+ * Default configuration values
+ */
+const DEFAULT_CONFIG = {
+  // Appearance settings
+  appearance: {
+    person: {
+      icon: 'default',
+      color: '#FF0000'
+    },
+    meeting: {
+      icon: 'blue-dot',
+      color: '#0000FF'
+    },
+    group: {
+      style: 'circle'
+    }
+  },
+  // Auto-grouping settings
+  autoGrouping: {
+    distanceThreshold: 1.0, // in kilometers
+    minGroupSize: 2,
+    maxGroupSize: 20,
+    maxGroupSizeDifference: 5,
+    keepFamiliesTogether: true,
+    requirements: {
+      minElders: 0,
+      minServants: 0,
+      minPioneers: 0,
+      minLeaders: 1,
+      minHelpers: 1,
+      minPublishers: 0
+    }
+  },
+  // Map settings
+  map: {
+    defaultCenter: { lat: 48.2082, lng: 16.3738 }, // Vienna, Austria
+    defaultZoom: 13,
+    showTraffic: false,
+    mapType: 'roadmap'
+  },
+  // UI settings
+  ui: {
+    sidebarWidth: 320,
+    theme: 'light',
+    showTooltips: true,
+    confirmDeletes: true
+  }
+};
+
+/**
+ * Config class representing application configuration
  */
 class Config {
   /**
@@ -14,81 +64,131 @@ class Config {
    * @param {Object} data - Configuration data
    */
   constructor(data = {}) {
-    // Appearance settings
-    this.appearance = {
-      person: {
-        icon: data.appearance?.person?.icon || 'default',
-        color: data.appearance?.person?.color || '#FF0000'
-      },
-      meeting: {
-        icon: data.appearance?.meeting?.icon || 'blue-dot',
-        color: data.appearance?.meeting?.color || '#0000FF'
-      },
-      group: {
-        style: data.appearance?.group?.style || 'circle'
-      }
-    };
+    // Clone the default configuration
+    const defaults = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
     
-    // Auto-grouping settings
-    this.autoGrouping = {
-      distanceThreshold: data.autoGrouping?.distanceThreshold || 1.0,
-      minGroupSize: data.autoGrouping?.minGroupSize || 2,
-      maxGroupSize: data.autoGrouping?.maxGroupSize || 20,
-      maxGroupSizeDifference: data.autoGrouping?.maxGroupSizeDifference || 5,
-      keepFamiliesTogether: data.autoGrouping?.keepFamiliesTogether !== undefined 
-        ? data.autoGrouping.keepFamiliesTogether 
-        : true,
-      requirements: {
-        minElders: data.autoGrouping?.requirements?.minElders || 0,
-        minServants: data.autoGrouping?.requirements?.minServants || 0,
-        minPioneers: data.autoGrouping?.requirements?.minPioneers || 0,
-        minLeaders: data.autoGrouping?.requirements?.minLeaders || 1,
-        minHelpers: data.autoGrouping?.requirements?.minHelpers || 1,
-        minPublishers: data.autoGrouping?.requirements?.minPublishers || 0
-      }
-    };
+    // Deep merge defaults with provided data
+    this._config = this.deepMerge(defaults, data);
     
-    // Map settings
-    this.map = {
-      defaultCenter: data.map?.defaultCenter || { lat: 48.2082, lng: 16.3738 }, // Vienna
-      defaultZoom: data.map?.defaultZoom || 13,
-      markerAnimations: data.map?.markerAnimations !== undefined 
-        ? data.map.markerAnimations 
-        : true
-    };
+    // Validate the merged configuration
+    this.validate();
+  }
+  
+  /**
+   * Deeply merge two objects
+   * @param {Object} target - Target object to merge into
+   * @param {Object} source - Source object to merge from
+   * @returns {Object} Merged object
+   * @private
+   */
+  deepMerge(target, source) {
+    const output = { ...target };
     
-    // UI settings
-    this.ui = {
-      showTooltips: data.ui?.showTooltips !== undefined ? data.ui.showTooltips : true,
-      sidebarWidth: data.ui?.sidebarWidth || 320,
-      darkMode: data.ui?.darkMode || false
-    };
+    if (this.isObject(target) && this.isObject(source)) {
+      Object.keys(source).forEach(key => {
+        if (this.isObject(source[key])) {
+          if (!(key in target)) {
+            Object.assign(output, { [key]: source[key] });
+          } else {
+            output[key] = this.deepMerge(target[key], source[key]);
+          }
+        } else {
+          Object.assign(output, { [key]: source[key] });
+        }
+      });
+    }
+    
+    return output;
+  }
+  
+  /**
+   * Check if value is an object
+   * @param {*} item - Item to check
+   * @returns {boolean} Whether item is an object
+   * @private
+   */
+  isObject(item) {
+    return (item && typeof item === 'object' && !Array.isArray(item));
   }
   
   /**
    * Validate the configuration
-   * @returns {boolean} True if valid, false otherwise
+   * @returns {boolean} Whether the configuration is valid
    */
   validate() {
     let isValid = true;
     const errors = [];
     
-    // Validate distance threshold
-    if (typeof this.autoGrouping.distanceThreshold !== 'number' || 
-        this.autoGrouping.distanceThreshold <= 0) {
-      errors.push('Distance threshold must be a positive number');
+    // Validate appearance settings
+    if (!this._config.appearance) {
+      errors.push('Appearance settings are missing');
       isValid = false;
+    } else {
+      // Validate person appearance
+      if (!this._config.appearance.person) {
+        errors.push('Person appearance settings are missing');
+        isValid = false;
+      } else if (typeof this._config.appearance.person.color !== 'string') {
+        errors.push('Person color must be a string');
+        isValid = false;
+      }
+      
+      // Validate meeting appearance
+      if (!this._config.appearance.meeting) {
+        errors.push('Meeting appearance settings are missing');
+        isValid = false;
+      } else if (typeof this._config.appearance.meeting.color !== 'string') {
+        errors.push('Meeting color must be a string');
+        isValid = false;
+      }
     }
     
-    // Validate group sizes
-    if (this.autoGrouping.minGroupSize < 2) {
-      errors.push('Minimum group size must be at least 2');
+    // Validate auto-grouping settings
+    if (!this._config.autoGrouping) {
+      errors.push('Auto-grouping settings are missing');
       isValid = false;
+    } else {
+      // Validate distance threshold
+      if (typeof this._config.autoGrouping.distanceThreshold !== 'number' || 
+          this._config.autoGrouping.distanceThreshold <= 0) {
+        errors.push('Distance threshold must be a positive number');
+        isValid = false;
+      }
+      
+      // Validate group size
+      if (typeof this._config.autoGrouping.minGroupSize !== 'number' || 
+          this._config.autoGrouping.minGroupSize < 1) {
+        errors.push('Minimum group size must be at least 1');
+        isValid = false;
+      }
+      
+      if (typeof this._config.autoGrouping.maxGroupSize !== 'number' || 
+          this._config.autoGrouping.maxGroupSize < this._config.autoGrouping.minGroupSize) {
+        errors.push('Maximum group size must be at least the minimum group size');
+        isValid = false;
+      }
     }
     
-    if (this.autoGrouping.maxGroupSize < this.autoGrouping.minGroupSize) {
-      errors.push('Maximum group size must be greater than or equal to minimum group size');
+    // Validate map settings
+    if (!this._config.map) {
+      errors.push('Map settings are missing');
       isValid = false;
+    } else {
+      // Validate default center
+      if (!this._config.map.defaultCenter || 
+          typeof this._config.map.defaultCenter.lat !== 'number' || 
+          typeof this._config.map.defaultCenter.lng !== 'number') {
+        errors.push('Default center must have valid lat and lng numbers');
+        isValid = false;
+      }
+      
+      // Validate default zoom
+      if (typeof this._config.map.defaultZoom !== 'number' || 
+          this._config.map.defaultZoom < 1 || 
+          this._config.map.defaultZoom > 20) {
+        errors.push('Default zoom must be between 1 and 20');
+        isValid = false;
+      }
     }
     
     // Log validation errors
@@ -96,7 +196,7 @@ class Config {
       const errorMessage = `Configuration validation failed: ${errors.join(', ')}`;
       errorHandler.handleError(
         new Error(errorMessage),
-        'Configuration Validation',
+        'Config Validation',
         ErrorSeverity.WARNING,
         ErrorType.VALIDATION
       );
@@ -106,16 +206,11 @@ class Config {
   }
   
   /**
-   * Convert the config to a plain object for storage
+   * Convert the configuration to a plain object for storage
    * @returns {Object} Plain object representation
    */
   toJSON() {
-    return {
-      appearance: { ...this.appearance },
-      autoGrouping: { ...this.autoGrouping },
-      map: { ...this.map },
-      ui: { ...this.ui }
-    };
+    return JSON.parse(JSON.stringify(this._config));
   }
   
   /**
@@ -128,59 +223,126 @@ class Config {
   }
   
   /**
-   * Reset all settings to defaults
+   * Get the default configuration
+   * @returns {Object} Default configuration
    */
-  resetToDefaults() {
-    const defaults = new Config();
-    this.appearance = { ...defaults.appearance };
-    this.autoGrouping = { ...defaults.autoGrouping };
-    this.map = { ...defaults.map };
-    this.ui = { ...defaults.ui };
+  static getDefaults() {
+    return JSON.parse(JSON.stringify(DEFAULT_CONFIG));
   }
   
   /**
-   * Get a specific configuration value by path
-   * @param {string} path - Dot notation path to configuration value
-   * @returns {*} Configuration value or undefined if not found
+   * Reset configuration to defaults
    */
-  getValue(path) {
-    if (!path) return undefined;
-    
+  resetToDefaults() {
+    this._config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  }
+  
+  /**
+   * Get a configuration value
+   * @param {string} path - Dot notation path to the setting
+   * @param {*} defaultValue - Default value if setting does not exist
+   * @returns {*} Configuration value
+   */
+  get(path, defaultValue = undefined) {
     const parts = path.split('.');
-    let value = this;
+    let value = this._config;
     
     for (const part of parts) {
       if (value === undefined || value === null) {
-        return undefined;
+        return defaultValue;
       }
       value = value[part];
     }
     
-    return value;
+    return value !== undefined ? value : defaultValue;
   }
   
   /**
-   * Update a specific configuration value by path
-   * @param {string} path - Dot notation path to configuration value
-   * @param {*} value - New value to set
-   * @returns {boolean} Success status
+   * Set a configuration value
+   * @param {string} path - Dot notation path to the setting
+   * @param {*} value - Value to set
+   * @returns {boolean} Whether the setting was successfully set
    */
-  setValue(path, value) {
-    if (!path) return false;
-    
+  set(path, value) {
     const parts = path.split('.');
-    const lastPart = parts.pop();
-    let current = this;
+    let current = this._config;
     
-    for (const part of parts) {
+    // Navigate to the parent object
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i];
       if (current[part] === undefined) {
         current[part] = {};
+      } else if (typeof current[part] !== 'object') {
+        // Cannot descend further, path is invalid
+        return false;
       }
       current = current[part];
     }
     
+    // Set the value
+    const lastPart = parts[parts.length - 1];
     current[lastPart] = value;
-    return true;
+    
+    // Validate after setting
+    return this.validate();
+  }
+  
+  /**
+   * Update multiple configuration values at once
+   * @param {Object} updates - Object with path-value pairs
+   * @returns {boolean} Whether all updates were successful
+   */
+  update(updates) {
+    let allValid = true;
+    
+    // Create a backup in case validation fails
+    const backup = JSON.parse(JSON.stringify(this._config));
+    
+    // Apply all updates
+    Object.entries(updates).forEach(([path, value]) => {
+      this.set(path, value);
+    });
+    
+    // Validate the entire configuration
+    if (!this.validate()) {
+      // Restore backup if validation fails
+      this._config = backup;
+      allValid = false;
+    }
+    
+    return allValid;
+  }
+  
+  /**
+   * Get all appearance settings
+   * @returns {Object} Appearance settings
+   */
+  getAppearanceSettings() {
+    return JSON.parse(JSON.stringify(this._config.appearance));
+  }
+  
+  /**
+   * Get all auto-grouping settings
+   * @returns {Object} Auto-grouping settings
+   */
+  getAutoGroupingSettings() {
+    return JSON.parse(JSON.stringify(this._config.autoGrouping));
+  }
+  
+  /**
+   * Get all map settings
+   * @returns {Object} Map settings
+   */
+  getMapSettings() {
+    return JSON.parse(JSON.stringify(this._config.map));
+  }
+  
+  /**
+   * Get all UI settings
+   * @returns {Object} UI settings
+   */
+  getUISettings() {
+    return JSON.parse(JSON.stringify(this._config.ui));
   }
 }
 
