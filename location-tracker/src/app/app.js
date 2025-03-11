@@ -8,6 +8,7 @@ import { errorHandler, ErrorType, ErrorSeverity } from '../utils/errorHandler';
 import { initMapService } from '../services/MapService';
 import { createSidebar } from '../ui/components/Sidebar';
 import { loadGoogleMapsApi } from '../utils/mapUtils';
+import { formManager } from '../ui/components/FormManager';
 
 // Default map configuration
 const DEFAULT_CENTER = { lat: 48.2082, lng: 16.3738 }; // Vienna, Austria
@@ -31,6 +32,9 @@ export async function initApp() {
     
     // Load any saved data
     loadSavedData();
+    
+    // Initialize form manager to handle form events
+    initFormManager();
     
     console.log('Application initialized successfully');
   } catch (error) {
@@ -173,6 +177,17 @@ function initUI() {
   // Initialize other UI components
   // This will be expanded as we implement more components
 }
+  
+/**
+ * Initialize Form Manager
+ */
+function initFormManager() {
+  console.log('Initializing Form Manager...');
+  
+  // FormManager constructor sets up event subscriptions
+  // No additional setup needed as it's handled in the FormManager class
+}
+
 
 /**
  * Initialize the map
