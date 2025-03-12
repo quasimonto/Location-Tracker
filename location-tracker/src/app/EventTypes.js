@@ -3,6 +3,10 @@
  * Centralized definition of event types used throughout the application
  */
 
+// Import EventBus from EventBus.js to re-export
+import eventBus from './EventBus';
+export const EventBus = eventBus;
+
 /**
  * Application event types
  * @enum {string}
@@ -119,6 +123,9 @@ export const Events = {
     
     // Error events
     ERROR_OCCURRED: 'errorOccurred'
-  };
-  
-  export default Events;
+};
+
+
+
+// Also export Events as default to maintain backward compatibility
+export default Events;

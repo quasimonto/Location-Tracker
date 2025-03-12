@@ -6,11 +6,12 @@
 import { stateManager } from '../services/StateManager';
 import { errorHandler, ErrorType, ErrorSeverity } from '../utils/errorHandler';
 import { initMapService } from '../services/MapService';
-import { createSidebar } from '../ui/components/Sidebar';
+import { createSidebar } from '../ui/components/SidebarWrapper';
 import { loadGoogleMapsApi } from '../utils/mapUtils';
 import { formManager } from '../ui/components/FormManager';
 import { createMapContainer } from '../ui/map';
-import workflowController from '../controllers/WorkflowController';
+import { workflowController }from '../controllers/WorkflowController';
+
 
 // Default map configuration
 const DEFAULT_CENTER = { lat: 48.2082, lng: 16.3738 }; // Vienna, Austria

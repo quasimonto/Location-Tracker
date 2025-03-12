@@ -3,8 +3,7 @@
  * Custom controls for the map
  */
 
-import { eventBus as EventBus } from '../../app/EventBus';
-import { Events } from '../../app/EventTypes';
+import { EventBus, Events } from '../../app/EventBus';
 import { setMapClickMode, getMapClickMode } from '../../services/MapService';
 import { errorHandler, ErrorType, ErrorSeverity } from '../../utils/errorHandler';
 
